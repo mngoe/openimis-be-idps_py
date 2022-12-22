@@ -8,8 +8,6 @@ from django.contrib.auth.models import AnonymousUser
 from django.utils.translation import gettext as _
 from core.utils import TimeUtils
 from location import models as location_models
-from django.db.models.functions import ExtractMonth, ExtractYear
-#lecture des donnes 
 
 class PerformanceCriteriaGQLType(DjangoObjectType):
 
@@ -33,12 +31,12 @@ class Query(graphene.ObjectType):
     def resolve_health_facility_filter(self,info,hfid,**kwargs):
         return PerformanceCriteria.objects.filter(health_facility = hfid)
 
-    def resolve_interval_filter(self,info,start_date ,**kwarg):
-        return PerformanceCriteria.objects.filter(date_from=start_date)
+    def resolve_interval_filter(self,info,start_date,hfid,**kwarg):
+        return PerformanceCriteria.objects.filter(date_from=start_date,health_facility=hfid)
 
 
 
-# insertion des donnees
+
 class CriteriaInputType(OpenIMISMutation.Input):
     id = graphene.Int(required=False)
     date_from = graphene.Date(required=False)
@@ -79,7 +77,7 @@ class CreateCriteriaMutation(OpenIMISMutation):
                 })
                 return errors
             else:
-                #data['audit_user_id'] = user.id_for_audit 
+                data['audit_user_id'] = user.id_for_audit 
                 data['record_date'] = TimeUtils.now()
                 criteria = PerformanceCriteria.objects.create(**data)
                 criteria.save()
@@ -88,8 +86,7 @@ class CreateCriteriaMutation(OpenIMISMutation):
             return [{
                 'message': _("idps.mutation.failed_to_create_criteria"),
                 'detail': str(exc)}]
-
-# update criteria 
+ 
 
 class UpdateCriteriaMutation(OpenIMISMutation):
     """
@@ -103,12 +100,31 @@ class UpdateCriteriaMutation(OpenIMISMutation):
         pass
 
     @classmethod
-    def async_mutate(cls,perms,user, **data):  
+    def async_mutate(cls, user, **data): 
+        range_date_from = data['date_from'] 
+        range_year_from = range_date_from.year
+        range_month_from = range_date_from.month 
 
+        criteria_to_update = PerformanceCriteria.objects.get(pk=data['id'])
+       
+
+        period_criteria  = PerformanceCriteria.objects.filter(
+            date_from__year=range_year_from,
+            date_from__month=range_month_from)
         try:
-         print()
-        
-           
+            if data['is_validated'] == True:
+                for criteria in period_criteria:
+                    if criteria.is_validated == True:
+                        criteria.is_validated = False
+                        criteria.record_date = TimeUtils.now()
+                        criteria.save()
+                    else: None
+            data['audit_user_id'] = user.id_for_audit 
+            criteria_to_update.record_date = TimeUtils.now()
+            criteria_to_update.is_validated = data['is_validated']
+            criteria_to_update.save()
+
+            return  criteria_to_update 
         except Exception as exc:
             return [{
                 'message': ("idps.mutation.failed_to_update_criteria"),
