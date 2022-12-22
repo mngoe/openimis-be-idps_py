@@ -26,7 +26,7 @@ class PerformanceCriteria(models.Model):
     sterilization_tools = models.IntegerField(db_column='SterilizationTools',blank=True, null= True)
     is_validated = models.BooleanField(db_column='isValidated', blank=True, null=True, default=False)
     record_date = models.DateTimeField(db_column='RecordDate',blank=True, null=True)
-    #audit_user_id = models.IntegerField(db_column='AuditUserId',blank=True, null= True)
+    audit_user_id = models.IntegerField(db_column='AuditUserId',blank=True, null= True)
     class Meta:
         managed=True
         db_table = 'tblPerformanceCriteria'
