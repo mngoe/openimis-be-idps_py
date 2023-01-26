@@ -17,13 +17,14 @@ class PerformanceCriteriaGQLType(DjangoObjectType):
         filter_fields = {
             "id":["exact"],
             "health_facility":["exact"],
-            "date_from":["exact","lt","lte","gt","gte"],
-            "date_to":["exact","lt","lte","gt","gte"]
+            "period":["exact","lt","lte","gt","gte"],
+            "hf_score":["exact"]
         }
 class Query(graphene.ObjectType):
     all_criteria = graphene.List(PerformanceCriteriaGQLType)
     health_facility_filter = graphene.List(PerformanceCriteriaGQLType, hfid= graphene.Int())
-    interval_filter = graphene.List(PerformanceCriteriaGQLType, start_date=graphene.Date())
+    period_filter = graphene.List(PerformanceCriteriaGQLType, period=graphene.String(),hfid= graphene.Int())
+    score_filter = graphene.List(PerformanceCriteriaGQLType, score=graphene.Int())
 
     def resolve_all_criteria(self,info, **kwargs):
         return PerformanceCriteria.objects.all()
@@ -31,18 +32,20 @@ class Query(graphene.ObjectType):
     def resolve_health_facility_filter(self,info,hfid,**kwargs):
         return PerformanceCriteria.objects.filter(health_facility = hfid)
 
-    def resolve_interval_filter(self,info,start_date,hfid,**kwarg):
-        return PerformanceCriteria.objects.filter(date_from=start_date,health_facility=hfid)
+    def resolve_period_filter(self,info,period,hfid,**kwarg):
+        return PerformanceCriteria.objects.filter(period=period,health_facility=hfid)
+    
+    def resolve_score_filter(self,info, score,**kwargs):
+        return PerformanceCriteria.objects.filter(hf_score=score)
+
 
 
 
 
 class CriteriaInputType(OpenIMISMutation.Input):
     id = graphene.Int(required=False)
-    date_from = graphene.Date(required=False)
-    date_to = graphene.Date(required=False)
+    period = graphene.String(required=False)
     health_facility = graphene.Int(required=False)
-    promptness =  graphene.Int(required=False)
     medecine_availability = graphene.Int(required=False)
     qualified_personnel =  graphene.Int(required=False)
     garbagecan_availability = graphene.Int(required=False)
@@ -65,17 +68,23 @@ class CreateCriteriaMutation(OpenIMISMutation):
 
     @classmethod
     def async_mutate(cls, user, **data):
-        errors = []
-        criteria_range = PerformanceCriteria.objects.filter(
-        date_from = data['date_from'],
-        date_to = data['date_to'],
+        criteria_filter = PerformanceCriteria.objects.filter(
+        period = data["period"],
         health_facility = data['health_facility'])
         try:
-            if criteria_range :
-                errors.append({
-                    'message','duplicate records not allowed on the same period'
-                })
-                return errors
+            if criteria_filter :
+                for criteria in  criteria_filter:
+                    if criteria.is_validated == True:
+                        criteria.is_validated = False
+                        criteria.save()
+                    else: None
+                
+                data['audit_user_id'] = user.id_for_audit 
+                data['record_date'] = TimeUtils.now()
+                new_criteria = PerformanceCriteria.objects.create(**data)
+                new_criteria.save()
+
+                return new_criteria     
             else:
                 data['audit_user_id'] = user.id_for_audit 
                 data['record_date'] = TimeUtils.now()
