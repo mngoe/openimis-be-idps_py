@@ -1,15 +1,15 @@
 from django.db import models
 
-import datetime
+from datetime import datetime
 import core
 from core import fields 
 from django.core.exceptions import ValidationError
 from core import models as core_models
 from django.http import request
-from location import models as location_models
 from insuree.models import Insuree, Family, InsureePolicy
 from claim import models as claim_models
-from django.db.models import Case, Value, When
+from django.db import connection
+
 
 # Create your models here.
 
@@ -34,40 +34,44 @@ class PerformanceCriteria(models.Model):
     
     @property
     def promptness_submission_service(self,*args, **kwargs):
+        val_claim = 16
+        format_period_start = datetime(year=int(self.period[:4]), month=int(self.period[6:7]),day=1, hour=00, minute=00, second=000)
+        format_period_end = datetime(year=int(self.period[0:4]), month=int(self.period[6:7]),day=31, hour=00, minute=00, second=000)    
+
+        with connection.cursor() as cursor:
+            cursor.execute('''
+                SELECT 1 AS id, CAST(AVG(CAST(DateProcessed AS FLOAT)) AS DATETIME) AS average_date
+                FROM tblClaim
+                WHERE ClaimStatus=%s AND DateProcessed >=%s AND DateProcessed <=%s
+            ''',[val_claim,format_period_start,format_period_end])
+            row =  cursor.fetchone()
+            print(row)        
         promptness_score = 0
         
         return promptness_score
+         
 
 
     @property
     def claim_rejection_service(self,*args, **kwargs):
         coef = 0.3
         score_ratio = 0.67
-        #recuperer tous les claims dont la date de soumission est dans cette periode
         period_claim = claim_models.Claim.objects.filter(submit_stamp__year = self.period[:4],submit_stamp__month = self.period[6:7], health_facility=self.health_facility)
-        num_period_claim = period_claim.count()
+        
         num_valuated_claim = claim_models.Claim.objects.filter(submit_stamp__year = self.period[:4],submit_stamp__month = self.period[6:7],status=16, health_facility=self.health_facility).count()
         num_rejected_claim = claim_models.Claim.objects.filter(submit_stamp__year = self.period[:4],submit_stamp__month = self.period[6:7],status=1, health_facility=self.health_facility).count()
         terminated_claims = num_valuated_claim + num_rejected_claim
-        #fais un ratio des deux
+        
         rejection_ratio = num_rejected_claim / terminated_claims
-        if rejection_ratio >= 0.3:
+        if rejection_ratio >= coef:
             rejection_score = 0
         elif rejection_ratio == 0:
             rejection_score = 20
-        elif rejection_ratio < 0.3:
+        elif rejection_ratio < coef:
             rejection_score = (rejection_ratio * score_ratio) * 100
         else: None
-        
-        print(num_valuated_claim)
-        print(num_rejected_claim)
-        print(terminated_claims)
-        print(rejection_ratio)
-        print(rejection_ratio * 0.67)
-        print(rejection_score)
 
-        return  rejection_score
-
+        return  int(rejection_score)
 
 
     @property
@@ -77,8 +81,9 @@ class PerformanceCriteria(models.Model):
    
 
     def save(self, *args, **kwargs):
-            self.hf_score = self.score_service
             self.degre_of_rejection = self.claim_rejection_service
+            self.promptness = self.promptness_submission_service
+            self.hf_score = self.score_service
             super(PerformanceCriteria,self).save(*args, **kwargs)
     class Meta:
         managed=True

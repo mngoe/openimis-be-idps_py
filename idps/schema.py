@@ -79,14 +79,14 @@ class CreateCriteriaMutation(OpenIMISMutation):
                         criteria.save()
                     else: None
                 
-                data['audit_user_id'] = user.id_for_audit 
+                #data['audit_user_id'] = user.id_for_audit 
                 data['record_date'] = TimeUtils.now()
                 new_criteria = PerformanceCriteria.objects.create(**data)
                 new_criteria.save()
 
                 return new_criteria     
             else:
-                data['audit_user_id'] = user.id_for_audit 
+                #data['audit_user_id'] = user.id_for_audit 
                 data['record_date'] = TimeUtils.now()
                 criteria = PerformanceCriteria.objects.create(**data)
                 criteria.save()
