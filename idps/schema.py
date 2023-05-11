@@ -68,6 +68,8 @@ class CreateCriteriaMutation(OpenIMISMutation):
 
     @classmethod
     def async_mutate(cls, user, **data):
+        data.pop('client_mutation_label', None)
+        data.pop('client_mutation_id', None)
         criteria_filter = PerformanceCriteria.objects.filter(
         period = data["period"],
         health_facility = data['health_facility'])
@@ -79,23 +81,22 @@ class CreateCriteriaMutation(OpenIMISMutation):
                         criteria.save()
                     else: None
                 
-                data['audit_user_id'] = user.id_for_audit 
+                data['audit_user_id'] = user.id_for_audit
                 data['record_date'] = TimeUtils.now()
                 new_criteria = PerformanceCriteria.objects.create(**data)
                 new_criteria.save()
 
-                return new_criteria     
+                return None
             else:
-                data['audit_user_id'] = user.id_for_audit 
+                data['audit_user_id'] = user.id_for_audit
                 data['record_date'] = TimeUtils.now()
                 criteria = PerformanceCriteria.objects.create(**data)
                 criteria.save()
-                return criteria  
+                return None  
         except Exception as exc:
             return [{
                 'message': _("idps.mutation.failed_to_create_criteria"),
                 'detail': str(exc)}]
- 
 
 class UpdateCriteriaMutation(OpenIMISMutation):
     """
@@ -109,10 +110,12 @@ class UpdateCriteriaMutation(OpenIMISMutation):
         pass
 
     @classmethod
-    def async_mutate(cls, user, **data): 
-        range_date_from = data['date_from'] 
+    def async_mutate(cls, user, **data):
+        data.pop('client_mutation_label', None)
+        data.pop('client_mutation_id', None)
+        range_date_from = data['date_from']
         range_year_from = range_date_from.year
-        range_month_from = range_date_from.month 
+        range_month_from = range_date_from.month
 
         criteria_to_update = PerformanceCriteria.objects.get(pk=data['id'])
        
@@ -142,6 +145,3 @@ class UpdateCriteriaMutation(OpenIMISMutation):
 class Mutation(graphene.ObjectType):
     create_criteria = CreateCriteriaMutation.Field()
     update_criteria = UpdateCriteriaMutation.Field()
-
-
-

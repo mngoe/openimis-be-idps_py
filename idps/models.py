@@ -15,7 +15,7 @@ from django.db import connection
 # Create your models here.
 
 class PerformanceCriteria(models.Model):
-    id = models.SmallIntegerField(db_column='ID', primary_key=True)
+    id = models.AutoField(db_column='ID', primary_key=True)
     period = models.CharField(db_column='Period', max_length=50, blank=True, null=True)
     health_facility = models.IntegerField(db_column='HFID', blank=True, null=True)
     #health_facility =  models.ForeignKey(location_models.HealthFacility, models.DO_NOTHING, db_column='HFID', blank=True, null=True)
@@ -117,8 +117,3 @@ class PerformanceCriteria(models.Model):
     class Meta:
         managed=True
         db_table = 'tblPerformanceCriteria'
-
-
-
-
-
