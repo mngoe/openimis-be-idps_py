@@ -46,7 +46,7 @@ class PerformanceCriteria(models.Model):
         
         with connection.cursor() as cursor:
             cursor.execute('''
-                SELECT 1 AS id, CAST(AVG(CAST(DateProcessed AS FLOAT)) AS DATETIME) AS average_date
+                SELECT 1 AS id, DATEADD(DAY, AVG(DATEDIFF(DAY, '1900-01-01', DateProcessed)), '1900-01-01') AS average_date
                 FROM tblClaim
                 WHERE ClaimStatus=%s 
                 AND DateProcessed >=%s AND DateProcessed <=%s     
@@ -62,15 +62,15 @@ class PerformanceCriteria(models.Model):
 
         interval_diff = ( mid_month - format_medium_date ).days
         
-        if  interval_diff < 0:
-            promptness_score = 0
-        elif interval_diff in range(10,14):
+        promptness_score = 0
+        # if  interval_diff < 0:
+        #     promptness_score = 0
+        if interval_diff in range(10,14):
             promptness_score = 30
         elif  interval_diff in range(5,9):
             promptness_score = 20
         elif interval_diff in range(0,4):
             promptness_score = 15
-        else: None
         
         return promptness_score
 
