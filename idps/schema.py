@@ -1,13 +1,17 @@
+from core import ExtendedConnection
+from core.schema import TinyInt, SmallInt, OpenIMISMutation, OrderedDjangoFilterConnectionField
+from core.utils import TimeUtils
+from django.db.models import Q
 import graphene
+from graphene import InputObjectType
+import graphene_django_optimizer as gql_optimizer
 from graphene_django import DjangoObjectType
 from idps.models import PerformanceCriteria
-from core.schema import TinyInt, SmallInt, OpenIMISMutation
-from graphene import InputObjectType
 from django.core.exceptions import ValidationError, PermissionDenied
 from django.contrib.auth.models import AnonymousUser
 from django.utils.translation import gettext as _
-from core.utils import TimeUtils
 from location import models as location_models
+
 
 class PerformanceCriteriaGQLType(DjangoObjectType):
 
@@ -20,23 +24,18 @@ class PerformanceCriteriaGQLType(DjangoObjectType):
             "period":["exact","lt","lte","gt","gte"],
             "hf_score":["exact"]
         }
+        interfaces = (graphene.relay.Node,)
+        connection_class = ExtendedConnection
+
 class Query(graphene.ObjectType):
-    all_criteria = graphene.List(PerformanceCriteriaGQLType)
-    health_facility_filter = graphene.List(PerformanceCriteriaGQLType, hfid= graphene.Int())
-    period_filter = graphene.List(PerformanceCriteriaGQLType, period=graphene.String(),hfid= graphene.Int())
-    score_filter = graphene.List(PerformanceCriteriaGQLType, score=graphene.Int())
+    all_criteria = OrderedDjangoFilterConnectionField(PerformanceCriteriaGQLType)
 
-    def resolve_all_criteria(self,info, **kwargs):
-        return PerformanceCriteria.objects.all()
-
-    def resolve_health_facility_filter(self,info,hfid,**kwargs):
-        return PerformanceCriteria.objects.filter(health_facility = hfid)
-
-    def resolve_period_filter(self,info,period,hfid,**kwarg):
-        return PerformanceCriteria.objects.filter(period=period,health_facility=hfid)
-    
-    def resolve_score_filter(self,info, score,**kwargs):
-        return PerformanceCriteria.objects.filter(hf_score=score)
+    def resolve_all_criteria(self, info, **kwargs):
+        filters = []
+        ids = kwargs.get('id', None)
+        if ids:
+            filters.append(Q(id=ids))
+        return gql_optimizer.query(PerformanceCriteria.objects.filter(*filters).all(), info)
 
 
 
