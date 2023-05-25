@@ -27,6 +27,13 @@ class PerformanceCriteriaGQLType(DjangoObjectType):
         interfaces = (graphene.relay.Node,)
         connection_class = ExtendedConnection
 
+    def resolve_health_facility(self, info):
+        if "health_facility_loader" in info.context.dataloaders and self.health_facility_id:
+            return info.context.dataloaders["health_facility_loader"].load(
+                self.health_facility_id
+            )
+        return self.health_facility_id
+
 class Query(graphene.ObjectType):
     all_criteria = OrderedDjangoFilterConnectionField(PerformanceCriteriaGQLType)
 
@@ -70,8 +77,13 @@ class CreateCriteriaMutation(OpenIMISMutation):
         data.pop('client_mutation_label', None)
         data.pop('client_mutation_id', None)
         criteria_filter = PerformanceCriteria.objects.filter(
-        period = data["period"],
-        health_facility = data['health_facility'])
+            period = data["period"],
+            health_facility = data['health_facility']
+        )
+
+        data['health_facility'] = location_models.HealthFacility.objects.get(
+            id=data['health_facility']
+        )
         try:
             if criteria_filter :
                 for criteria in  criteria_filter:

@@ -10,15 +10,14 @@ from django.http import request
 from insuree.models import Insuree, Family, InsureePolicy
 from claim import models as claim_models
 from django.db import connection
-
+from location import models as location_models
 
 # Create your models here.
 
 class PerformanceCriteria(models.Model):
     id = models.AutoField(db_column='ID', primary_key=True)
     period = models.CharField(db_column='Period', max_length=50, blank=True, null=True)
-    health_facility = models.IntegerField(db_column='HFID', blank=True, null=True)
-    #health_facility =  models.ForeignKey(location_models.HealthFacility, models.DO_NOTHING, db_column='HFID', blank=True, null=True)
+    health_facility =  models.ForeignKey(location_models.HealthFacility, models.DO_NOTHING, db_column='HFID', blank=True, null=True)
     medecine_availability = models.IntegerField(db_column='MedecineAvailability',blank=True, null= True, )
     qualified_personnel =  models.IntegerField(db_column='QualifiedPersonel',blank=True, null= True)
     garbagecan_availability = models.IntegerField(db_column='GarbagecanAvailable',blank=True, null= True)
@@ -78,10 +77,10 @@ class PerformanceCriteria(models.Model):
     def claim_rejection_service(self,*args, **kwargs):
         coef = 0.3
         score_ratio = 0.67
-        period_claim = claim_models.Claim.objects.filter(submit_stamp__year = self.period[:4],submit_stamp__month = self.period[6:7], health_facility=self.health_facility)
+        period_claim = claim_models.Claim.objects.filter(submit_stamp__year = self.period[:4],submit_stamp__month = self.period[6:7], health_facility=self.health_facility.id)
         
-        num_valuated_claim = claim_models.Claim.objects.filter(submit_stamp__year = self.period[:4],submit_stamp__month = self.period[6:7],status=16, health_facility=self.health_facility).count()
-        num_rejected_claim = claim_models.Claim.objects.filter(submit_stamp__year = self.period[:4],submit_stamp__month = self.period[6:7],status=1, health_facility=self.health_facility).count()
+        num_valuated_claim = claim_models.Claim.objects.filter(submit_stamp__year = self.period[:4],submit_stamp__month = self.period[6:7],status=16, health_facility=self.health_facility.id).count()
+        num_rejected_claim = claim_models.Claim.objects.filter(submit_stamp__year = self.period[:4],submit_stamp__month = self.period[6:7],status=1, health_facility=self.health_facility.id).count()
         terminated_claims = num_valuated_claim + num_rejected_claim
 
         if terminated_claims == 0:
