@@ -1623,12 +1623,12 @@ template = """
 
 
 
-def enrolled_families_query(user, date_from=None, date_to=None, location_id=None, **kwargs):
+def indicator_report_query(user, district=None, region=None, gender=None,  **kwargs):
     data = run_stored_proc_report(
-        "uspSSRSEnroledFamilies",
-        LocationId=location_id,
-        StartDate=date_from,
-        EndDate=date_to,
+        "uspSSRSIndicatorReports",
+        Gender=gender,
+        District=district,
+        Region=region,
     )
     return {
         "data": data
