@@ -1465,20 +1465,8 @@ template = """
           "testData": ""
         },
         {
-          "id": 237,
-          "name": "enroll_date",
-          "type": "date",
-          "arrayItemType": "string",
-          "eval": false,
-          "nullable": true,
-          "pattern": "",
-          "expression": "",
-          "showOnlyNameType": false,
-          "testData": ""
-        },
-        {
           "id": 242,
-          "name": "status",
+          "name": "gender",
           "type": "string",
           "arrayItemType": "string",
           "eval": false,
@@ -1490,7 +1478,7 @@ template = """
         },
         {
           "id": 244,
-          "name": "village",
+          "name": "region",
           "type": "string",
           "arrayItemType": "string",
           "eval": false,
@@ -1502,7 +1490,7 @@ template = """
         },
         {
           "id": 250,
-          "name": "ward",
+          "name": "ong",
           "type": "string",
           "arrayItemType": "string",
           "eval": false,
