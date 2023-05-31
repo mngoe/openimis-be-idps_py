@@ -1,6 +1,5 @@
 
-from django.conf import settings
-from django.db.models import Q, F
+from report.services import run_stored_proc_report
 
 # If manually pasting from reportbro and you have test data, search and replace \" with \\"
 template = """
@@ -1623,14 +1622,16 @@ template = """
 
 
 
-def indicator_report_query(user, district=None, region=None, gender=None,  **kwargs):
+def indicator_report_query(user, district=None, region=None, gender=None,healthy_facility=None  **kwargs):
     data = run_stored_proc_report(
         "uspSSRSIndicatorReports",
         Gender=gender,
         District=district,
         Region=region,
+        Healthfacility=healthy_facility
     )
     return {
         "data": data
     }
+
     
