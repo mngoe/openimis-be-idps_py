@@ -164,7 +164,7 @@ def invoice_report_query(user, **kwargs):
         status=1
     ).filter(
         date_from__gte=date_from,
-        date_from__gte=date_to,
+        date_from__lte=date_to,
         validity_to__isnull=True,
         **dictGeo
     )
