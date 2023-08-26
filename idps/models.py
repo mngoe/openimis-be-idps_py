@@ -161,10 +161,10 @@ def invoice_report_query(user, **kwargs):
     ## Get All claim corresponding to parameter sent
     statusExcluded = [1, 2]
     claimList = Claim.objects.exclude(
-        status__in=statusExcluded
+        status=1
     ).filter(
-        date_to__gte=date_from,
-        date_to__lte=date_to,
+        date_from__gte=date_from,
+        date_from__gte=date_to,
         validity_to__isnull=True,
         **dictGeo
     )
