@@ -1,4 +1,3 @@
-from distutils.command import upload
 from idps.models import invoice_report_query
 
 from idps.report_templates import invoiceReport

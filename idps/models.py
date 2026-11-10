@@ -6,6 +6,7 @@ import core
 from core import fields 
 from django.core.exceptions import ValidationError
 from core import models as core_models
+from core.models.row_security import RowSecurityMixin, ParentScope
 from django.http import request
 from insuree.models import Insuree, Family, InsureePolicy
 from claim import models as claim_models
@@ -17,7 +18,11 @@ from collections import defaultdict
 
 # Create your models here.
 
-class PerformanceCriteria(models.Model):
+class PerformanceCriteria(RowSecurityMixin, models.Model):
+    # Visible when its health facility is (HealthFacility scopes itself in code, so
+    # ParentScope narrows through HealthFacility.get_queryset): the user's districts.
+    row_scope = ParentScope("health_facility")
+
     id = models.AutoField(db_column='ID', primary_key=True)
     period = models.CharField(db_column='Period', max_length=50, blank=True, null=True)
     health_facility =  models.ForeignKey(location_models.HealthFacility, models.DO_NOTHING, db_column='HFID', blank=True, null=True)
@@ -160,7 +165,8 @@ def invoice_report_query(user, **kwargs):
     })
     ## Get All claim corresponding to parameter sent
     statusExcluded = [1, 2]
-    claimList = Claim.objects.exclude(
+    # row security: only the claims the user may read, whatever the parameters
+    claimList = Claim.get_queryset(None, user).exclude(
         status=1
     ).filter(
         date_from__gte=date_from,
