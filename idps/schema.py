@@ -11,9 +11,20 @@ from django.core.exceptions import ValidationError, PermissionDenied
 from django.contrib.auth.models import AnonymousUser
 from django.utils.translation import gettext as _
 from location import models as location_models
+from core.gql.scoped_object_type import ScopedQuerysetMixin
+from .apps import IdpsConfig
 
 
-class PerformanceCriteriaGQLType(DjangoObjectType):
+def _check_right(user, perms):
+    """Refuse anonymous callers and callers without `perms` (a right list left empty
+    refuses too: no configuration must not mean open)."""
+    if user is None or isinstance(user, AnonymousUser) or not user.is_authenticated:
+        raise PermissionDenied(_("unauthorized"))
+    if not perms or not user.has_perms(perms):
+        raise PermissionDenied(_("unauthorized"))
+
+
+class PerformanceCriteriaGQLType(ScopedQuerysetMixin, DjangoObjectType):
 
     class Meta:
         model = PerformanceCriteria
@@ -38,11 +49,13 @@ class Query(graphene.ObjectType):
     all_criteria = OrderedDjangoFilterConnectionField(PerformanceCriteriaGQLType)
 
     def resolve_all_criteria(self, info, **kwargs):
+        _check_right(info.context.user, IdpsConfig.gql_query_criteria_perms)
         filters = []
         ids = kwargs.get('id', None)
         if ids:
             filters.append(Q(id=ids))
-        return gql_optimizer.query(PerformanceCriteria.objects.filter(*filters).all(), info)
+        return gql_optimizer.query(
+            PerformanceCriteria.get_queryset(None, info.context.user).filter(*filters), info)
 
 
 
@@ -74,15 +87,16 @@ class CreateCriteriaMutation(OpenIMISMutation):
 
     @classmethod
     def async_mutate(cls, user, **data):
+        _check_right(user, IdpsConfig.gql_mutation_create_criteria_perms)
         data.pop('client_mutation_label', None)
         data.pop('client_mutation_id', None)
-        criteria_filter = PerformanceCriteria.objects.filter(
+        # row security: a criteria can only be recorded for a health facility the user may read
+        data['health_facility'] = location_models.HealthFacility.get_queryset(None, user).get(
+            id=data['health_facility']
+        )
+        criteria_filter = PerformanceCriteria.get_queryset(None, user).filter(
             period = data["period"],
             health_facility = data['health_facility']
-        )
-
-        data['health_facility'] = location_models.HealthFacility.objects.get(
-            id=data['health_facility']
         )
         try:
             if criteria_filter :
@@ -122,16 +136,17 @@ class UpdateCriteriaMutation(OpenIMISMutation):
 
     @classmethod
     def async_mutate(cls, user, **data):
+        _check_right(user, IdpsConfig.gql_mutation_update_criteria_perms)
         data.pop('client_mutation_label', None)
         data.pop('client_mutation_id', None)
+        # row security: the target, and the criteria it un-validates, are ones the user may read
+        scoped = PerformanceCriteria.get_queryset(None, user)
+        criteria_to_update = scoped.get(pk=data['id'])
         range_date_from = data['date_from']
         range_year_from = range_date_from.year
         range_month_from = range_date_from.month
 
-        criteria_to_update = PerformanceCriteria.objects.get(pk=data['id'])
-       
-
-        period_criteria  = PerformanceCriteria.objects.filter(
+        period_criteria  = scoped.filter(
             date_from__year=range_year_from,
             date_from__month=range_month_from)
         try:
